@@ -53,73 +53,11 @@
         "silver",
       ];
 
-      const map_style = [
-        {
-          elementType: "labels",
-          stylers: [
-            {
-              visibility: "off",
-            },
-          ],
-        },
-        {
-          featureType: "administrative",
-          elementType: "geometry",
-          stylers: [
-            {
-              visibility: "off",
-            },
-          ],
-        },
-        {
-          featureType: "administrative.neighborhood",
-          stylers: [
-            {
-              visibility: "off",
-            },
-          ],
-        },
-        {
-          featureType: "poi",
-          stylers: [
-            {
-              visibility: "off",
-            },
-          ],
-        },
-        {
-          featureType: "road",
-          stylers: [
-            {
-              visibility: "off",
-            },
-          ],
-        },
-        {
-          featureType: "road",
-          elementType: "labels.icon",
-          stylers: [
-            {
-              visibility: "off",
-            },
-          ],
-        },
-        {
-          featureType: "transit",
-          stylers: [
-            {
-              visibility: "off",
-            },
-          ],
-        },
-      ];
-
       google.maps.event.addDomListener(window, "load", function initialize() {
         map = new google.maps.Map(document.getElementById("map"), {
           zoom: 9,
           // center: { lat: 27.81749429964851, lng: -81.99573245320893 },
           scrollwheel: false,
-          // styles: map_style,
         });
 
         bounds = new google.maps.LatLngBounds();
@@ -132,10 +70,9 @@
                 paths: data_item.polygon,
                 strokeColor: "red",
                 strokeOpacity: 0.8,
-                strokeWeight: 0,
-                fillColor: colors[i],
-                fillOpacity: 0.5,
-                transition: "1s",
+                strokeWeight: 0.6,
+                fillColor: "blue",
+                fillOpacity: 0.1,
               };
               const polygon = new google.maps.Polygon(polygon_options);
               polygon.setMap(map);
@@ -151,7 +88,10 @@
                   polygon,
                   "mouseover",
                   function () {
-                    polygon.setOptions({ fillColor: "#052f7a" });
+                    polygon.setOptions({
+                      fillColor: "#f7ba00",
+                      fillOpacity: 0.7,
+                    });
                     console.log(data_item.county);
                   }
                 );
@@ -159,7 +99,7 @@
 
               (function (polygon, color) {
                 google.maps.event.addListener(polygon, "mouseout", function () {
-                  polygon.setOptions({ fillColor: color });
+                  polygon.setOptions({ fillColor: "blue", fillOpacity: 0.1 });
                 });
               })(polygon, colors[i]);
 
