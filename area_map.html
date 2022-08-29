@@ -15,83 +15,427 @@
         width: 100%;
         height: 100%;
       }
-      #map {
+      .container {
+        position: relative;
         width: 100%;
-        /* height: 500px; */
         height: 100%;
       }
+      #map {
+        width: 100%;
+        height: 100%;
+      }
+      .buttons {
+        position: absolute;
+        left: 50%;
+        bottom: 20px;
+        transform: translate(-50%, 0);
+      }
+      .buttons button {
+        border-radius: 50%;
+        padding: 5px;
+        width: 50px;
+        height: 50px;
+        background-color: #fff;
+        border: none;
+        margin: 5px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
+        cursor: pointer;
+      }
+      .buttons button .fa {
+        font-size: 25px;
+        color: #000;
+      }
+      .buttons button.active {
+        background-color: #07407b;
+      }
+      .buttons button.active .fa {
+        color: #fff;
+      }
     </style>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
   </head>
   <body>
-    <div id="map"></div>
+    <div class="container">
+      <div id="map"></div>
+      <div class="buttons">
+        <button type="button" id="hospital_btn">
+          <em class="fa fa-h-square"></em>
+        </button>
+        <button type="button" id="school_btn">
+          <em class="fa fa-graduation-cap"></em>
+        </button>
+        <button type="button" id="park_btn">
+          <em class="fa fa-tree"></em>
+        </button>
+        <button type="button" id="transit_station_btn">
+          <em class="fa fa-train"></em>
+        </button>
+        <button type="button" id="supermarket_btn">
+          <em class="fa fa-shopping-cart"></em>
+        </button>
+      </div>
+    </div>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJYygnGAhAWiwnrDSjFwGo3Bo5Re98lR4&v=weekly"></script>
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJYygnGAhAWiwnrDSjFwGo3Bo5Re98lR4&callback=initMap&libraries=places&v=weekly"
+      defer
+    ></script>
 
     <script>
-      const params = new Proxy(new URLSearchParams(window.location.search), {
-        get: (searchParams, prop) => searchParams.get(prop),
-      });
-      const county_id = params.county_id;
-      const area_id = params.area_id;
-
       let map;
       let bounds;
+      let service;
+      let infoWindow;
+      let boundaries_array = [];
+      let near_by_hospital_markers = [];
+      let near_by_school_markers = [];
+      let near_by_park_markers = [];
+      let near_by_transit_station_markers = [];
+      let near_by_market_markers = [];
 
-      const colors = [
-        "blue",
-        "green",
-        "orange",
-        "yellow",
-        "purple",
-        "brown",
-        "grey",
-        "red",
-        "pink",
-        "cyan",
-        "olive",
-        "maroon",
-        "magenta",
-        "tan",
-        "teal",
-        "navy",
-        "coral",
-        "gold",
-        "silver",
-      ];
+      function fetch_data_from_json() {
+        const params = new Proxy(new URLSearchParams(window.location.search), {
+          get: (searchParams, prop) => searchParams.get(prop),
+        });
+        const county_id = params.county_id;
+        const area_id = params.area_id;
+        return fetch("tampa_bay.json")
+          .then((response) => response.json())
+          .then((data) => {
+            return data[county_id].areas[area_id];
+          });
+      }
 
-      google.maps.event.addDomListener(window, "load", function initialize() {
+      async function initMap() {
         map = new google.maps.Map(document.getElementById("map"), {
           zoom: 9,
           scrollwheel: false,
         });
-
         bounds = new google.maps.LatLngBounds();
+        service = new google.maps.places.PlacesService(map);
+        infoWindow = new google.maps.InfoWindow();
 
-        fetch("tampa_bay.json")
-          .then((response) => response.json())
-          .then((data) => {
-            const area = data[county_id].areas[area_id];
+        const area = await fetch_data_from_json();
 
-            const polygon_options = {
-              paths: area.polygon,
-              strokeColor: "red",
-              strokeOpacity: 0.8,
-              strokeWeight: 0.6,
-              fillColor: "blue",
-              fillOpacity: 0.1,
-            };
-            const polygon = new google.maps.Polygon(polygon_options);
-            polygon.setMap(map);
+        boundaries_array = convert_polygon_obj_to_array(area.polygon);
 
-            polygon.getPaths().forEach(function (path) {
-              path.forEach(function (latlng) {
-                bounds.extend(latlng);
-              });
-            });
+        const polygon_options = {
+          paths: area.polygon,
+          strokeColor: "red",
+          strokeOpacity: 0.8,
+          strokeWeight: 0.6,
+          fillColor: "blue",
+          fillOpacity: 0.1,
+        };
+        const polygon = new google.maps.Polygon(polygon_options);
+        polygon.setMap(map);
 
-            map.fitBounds(bounds);
+        polygon.getPaths().forEach(function (path) {
+          path.forEach(function (latlng) {
+            bounds.extend(latlng);
           });
-      });
+        });
+        map.fitBounds(bounds);
+
+        const hospital_btn = document.getElementById("hospital_btn");
+        hospital_btn.addEventListener("click", () => {
+          if (hospital_btn.classList.contains("active") === true) {
+            hospital_btn.classList.remove("active");
+            clear_markers(near_by_hospital_markers);
+            near_by_hospital_markers = [];
+          } else {
+            hospital_btn.classList.add("active");
+            get_near_by_locations(area.polygon, "hospital");
+          }
+        });
+
+        const school_btn = document.getElementById("school_btn");
+        school_btn.addEventListener("click", () => {
+          if (school_btn.classList.contains("active") === true) {
+            school_btn.classList.remove("active");
+            clear_markers(near_by_school_markers);
+            near_by_school_markers = [];
+          } else {
+            school_btn.classList.add("active");
+            get_near_by_locations(area.polygon, "school");
+          }
+        });
+
+        const park_btn = document.getElementById("park_btn");
+        park_btn.addEventListener("click", () => {
+          if (park_btn.classList.contains("active") === true) {
+            park_btn.classList.remove("active");
+            clear_markers(near_by_park_markers);
+            near_by_park_markers = [];
+          } else {
+            park_btn.classList.add("active");
+            get_near_by_locations(area.polygon, "park");
+          }
+        });
+
+        const transit_station_btn = document.getElementById(
+          "transit_station_btn"
+        );
+        transit_station_btn.addEventListener("click", () => {
+          if (transit_station_btn.classList.contains("active") === true) {
+            transit_station_btn.classList.remove("active");
+            clear_markers(near_by_transit_station_markers);
+            near_by_transit_station_markers = [];
+          } else {
+            transit_station_btn.classList.add("active");
+            get_near_by_locations(area.polygon, "transit_station");
+          }
+        });
+
+        const supermarket_btn = document.getElementById("supermarket_btn");
+        supermarket_btn.addEventListener("click", () => {
+          if (supermarket_btn.classList.contains("active") === true) {
+            supermarket_btn.classList.remove("active");
+            clear_markers(near_by_market_markers);
+            near_by_market_markers = [];
+          } else {
+            supermarket_btn.classList.add("active");
+            get_near_by_locations(area.polygon, "supermarket");
+          }
+        });
+      }
+
+      function clear_markers(markers) {
+        markers.forEach((marker) => {
+          marker.setMap(null);
+        });
+      }
+
+      function calc_distance(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const latitude1 = toRad(lat1);
+        const latitude2 = toRad(lat2);
+
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.sin(dLon / 2) *
+            Math.sin(dLon / 2) *
+            Math.cos(latitude1) *
+            Math.cos(latitude2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      }
+      function toRad(Value) {
+        return (Value * Math.PI) / 180;
+      }
+
+      function get_near_by_locations(boundaries, keyword) {
+        const center = bounds.getCenter();
+        const max_distance = get_max_distance(boundaries, center);
+        const radius = max_distance * 1000;
+
+        var sw = bounds.getSouthWest();
+        var ne = bounds.getNorthEast();
+
+        near_by_search(center, radius, keyword);
+        near_by_search(sw, radius, keyword);
+        near_by_search(ne, radius, keyword);
+        near_by_search({ lat: ne.lat(), lng: sw.lng() }, radius, keyword);
+        near_by_search({ lat: sw.lat(), lng: ne.lng() }, radius, keyword);
+      }
+
+      function createMarkers(places, keyword) {
+        for (let i = 0, place; (place = places[i]); i++) {
+          var place_icon = places[i].icon;
+
+          const location = [
+            places[i].geometry.location.lat(),
+            places[i].geometry.location.lng(),
+          ];
+          let is_inside_flag = false;
+          boundaries_array.forEach((boundary) => {
+            const is_inside = check_point_inside_polygon(boundary, location);
+            if (is_inside === true) {
+              is_inside_flag = true;
+            }
+          });
+          if (is_inside_flag === false) {
+            continue;
+          }
+
+          const image = {
+            url: places[i].icon,
+            size: new google.maps.Size(30, 30),
+            origin: new google.maps.Point(0, 0),
+            anchor: new google.maps.Point(17, 34),
+            scaledSize: new google.maps.Size(30, 30),
+          };
+
+          var marker = new google.maps.Marker({
+            map,
+            icon: image,
+            title: place.name,
+            position: place.geometry.location,
+          });
+
+          if (keyword === "hospital") {
+            near_by_hospital_markers.push(marker);
+          } else if (keyword === "school") {
+            near_by_school_markers.push(marker);
+          } else if (keyword === "park") {
+            near_by_park_markers.push(marker);
+          } else if (keyword === "transit_station") {
+            near_by_transit_station_markers.push(marker);
+          } else if (keyword === "supermarket") {
+            near_by_market_markers.push(marker);
+          }
+
+          var place_name = places[i].name;
+          var place_address = places[i].vicinity;
+          var place_image = "https://sync360.com/no_image.png";
+          var place_rating = places[i].rating;
+          var place_review = places[i].user_ratings_total;
+
+          var rating = "";
+          if (!place_rating) {
+            place_rating = "No Rating";
+            rating = `<p>No Rating</p><p>No Review</p>`;
+          } else {
+            for (let i = 1; i <= 5; i++) {
+              if (place_rating >= i) {
+                rating += `<i class="fa fa-star active-star" style="font-size: 20px; color: #f7ba00;"></i>`;
+              } else {
+                rating += `<i class="fa fa-star" style="font-size: 20px; color: grey;"></i>`;
+              }
+            }
+            rating += `<span class="review_count" style="margin-left: 5px; font-size: 16px; font-weight: 500;">(${place_review})</span>`;
+          }
+          if (!place_review) {
+            place_review = "No Review";
+          }
+
+          if (places[i].photos) {
+            var place_image = places[i].photos[0].getUrl({
+              maxWidth: 100,
+              maxHeight: 100,
+            });
+          }
+
+          var infowindow_data = `<div class="infowindow" style="max-width: 300px;">
+                            <img src="${place_image}" style="width:100%;">
+                            <div class="info_text" style="margin: 8px 0;">
+                              <h5 style="text-align: center; font-size: 16px;">${place_name}</h5>
+                              <p style="text-align: center; font-size: 14px; margin: 8px 0;">${place_address}</p>
+                              <p style="text-align: center;">${rating}</p>
+                            </div>
+                          </div>`;
+
+          (function (marker, infowindow_data) {
+            google.maps.event.addListener(marker, "click", function (e) {
+              infoWindow.setContent(infowindow_data);
+              infoWindow.open(map, marker);
+            });
+          })(marker, infowindow_data);
+        }
+      }
+
+      function get_max_distance(coordinates, center) {
+        let pre_distance = 0;
+        let point;
+        coordinates.forEach((coordinate) => {
+          coordinate.forEach((coord) => {
+            const distance = calc_distance(
+              coord.lat,
+              coord.lng,
+              center.lat(),
+              center.lng()
+            );
+            if (distance > pre_distance) {
+              pre_distance = distance;
+              point = coord;
+            }
+          });
+        });
+        return pre_distance;
+      }
+
+      function near_by_search(point, radius, keyword) {
+        service.nearbySearch(
+          {
+            location: point,
+            radius: radius,
+            type: keyword,
+          },
+          (results, status, pagination) => {
+            if (status !== "OK") return;
+            createMarkers(results, keyword);
+            if (pagination && pagination.hasNextPage) {
+              // pagination.nextPage();
+            }
+          }
+        );
+      }
+
+      function convert_polygon_obj_to_array(boundaries) {
+        let boundaries_array = [];
+        boundaries.forEach((boundary) => {
+          let new_boundary = [];
+          boundary.forEach((boundary_item) => {
+            new_boundary.push([boundary_item.lat, boundary_item.lng]);
+          });
+          boundaries_array.push(new_boundary);
+        });
+        return boundaries_array;
+      }
+
+      function check_point_inside_polygon(polyPoints, point) {
+        var x = point[0],
+          y = point[1];
+        var inside = false;
+        var intersections = 0;
+        var ss = "";
+
+        for (
+          var i = 0, j = polyPoints.length - 1;
+          i < polyPoints.length;
+          j = i++
+        ) {
+          var xi = polyPoints[i][0],
+            yi = polyPoints[i][1];
+          var xj = polyPoints[j][0],
+            yj = polyPoints[j][1];
+
+          if (
+            yj == yi &&
+            yj == y &&
+            x > Math.min(xj, xi) &&
+            x < Math.max(xj, xi)
+          ) {
+            return true;
+          }
+
+          if (
+            y > Math.min(yj, yi) &&
+            y <= Math.max(yj, yi) &&
+            x <= Math.max(xj, xi) &&
+            yj != yi
+          ) {
+            ss = ((y - yj) * (xi - xj)) / (yi - yj) + xj;
+            if (ss == x) {
+              return true;
+            }
+            if (xj == xi || x <= ss) {
+              intersections++;
+            }
+          }
+        }
+
+        if (intersections % 2 != 0) {
+          return true;
+        } else {
+          return false;
+        }
+      }
     </script>
   </body>
 </html>
