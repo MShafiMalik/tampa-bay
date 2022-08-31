@@ -91,7 +91,7 @@
                 google.maps.event.addListener(polygon, "click", function () {
                   const url = `area_map.html?county_id=${county_id}&area_id=${index}`;
                   console.log(area);
-                  // window.location.href = url;
+                  window.location.href = url;
                 });
               })(polygon, i, area);
             });
