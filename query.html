@@ -1,0 +1,17 @@
+<script>
+  const options = {
+    method: "GET",
+    headers: {
+      "X-RapidAPI-Key": "cd7a2615c3mshaf01ae2204f2341p173aa2jsn9d1713abcc2e",
+      "X-RapidAPI-Host": "vanitysoft-boundaries-io-v1.p.rapidapi.com",
+    },
+  };
+
+  fetch(
+    "https://vanitysoft-boundaries-io-v1.p.rapidapi.com/rest/v1/public/boundary/zipcode?zipcode=34201%2C34202%2C34211%2C34212%2C34243%2C34203%2C34208",
+    options
+  )
+    .then((response) => response.json())
+    .then((response) => console.log(JSON.stringify(response)))
+    .catch((err) => console.error(err));
+</script>
